@@ -1,0 +1,648 @@
+openapi: 3.0.3
+info:
+  title: Cosmetic Checker API
+  version: 3.0.0
+  description: |
+    API для анализа косметических продуктов с возможностью оставлять отзывы, оценивать продукты, добавлять в избранное, искать по фильтрам и проверять состав.
+
+paths:
+  # Регистрация пользователя
+  /auth/register:
+    post:
+      summary: Регистрация нового пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+      responses:
+        '201':
+          description: Успешная регистрация
+        '400':
+          description: Невалидные параметры
+
+  # Авторизация пользователя
+  /auth/login:
+    post:
+      summary: Авторизация пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCredentials'
+      responses:
+        '200':
+          description: Успешная авторизация
+        '401':
+          description: Неверные учетные данные
+
+  # Получение состава продукта
+  /products/{id}/ingredients:
+    get:
+      summary: Получение состава продукта
+      description: Запрос для получения состава (ингредиентов) продукта по его ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор продукта
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Состав продукта
+        '404':
+          description: Продукт не найден
+
+  # Анализ состава
+  /analyze/composition:
+    post:
+      summary: Анализ состава продукта
+      description: Проверка безопасности состава на основе пользовательского списка ингредиентов.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompositionAnalysisRequest'
+      responses:
+        '200':
+          description: Результат анализа состава
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompositionAnalysisResult'
+
+  # Добавление продукта в избранное
+  /products/{id}/favorites:
+    post:
+      summary: Добавление продукта в избранное
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор продукта
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Продукт добавлен в избранное
+
+  # Получение избранных продуктов
+  /favorites:
+    get:
+      summary: Просмотр избранных продуктов
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Список избранных продуктов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductPreview'
+
+  # Добавление и получение отзывов
+  /products/{id}/reviews:
+    post:
+      summary: Добавление отзыва о продукте
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор продукта
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewInput'
+      responses:
+        '201':
+          description: Отзыв успешно добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+  
+    get:
+      summary: Получение отзывов о продукте
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор продукта
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список отзывов о продукте
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+  
+  # Модерация отзыва
+  /reviews/{id}/approve:
+    patch:
+      summary: Модерация отзыва
+      description: Модерация отзыва и его одобрение.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор отзыва
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Отзыв одобрен
+
+  # Поиск с фильтрами по безопасности, цене и составу
+  /products:
+    get:
+      summary: Расширенный поиск продуктов с фильтрами
+      description: |
+        Поиск продуктов с фильтрами по безопасности, цене, составу, бренду, категории.
+        Шкала безопасности: 1 (опасно) - 10 (абсолютно безопасно).
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Поиск по названию продукта
+        - name: brand
+          in: query
+          schema:
+            type: string
+          description: Фильтр по бренду
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Фильтр по категории
+        - name: min_price
+          in: query
+          schema:
+            type: number
+            format: float
+          description: Минимальная цена
+        - name: max_price
+          in: query
+          schema:
+            type: number
+            format: float
+          description: Максимальная цена
+        - name: min_safety
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+          description: Минимальный уровень безопасности (1-10)
+        - name: max_safety
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+          description: Максимальный уровень безопасности (1-10)
+        - name: include_ingredients
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+          description: Обязательные ингредиенты
+        - name: exclude_ingredients
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+          description: Исключаемые ингредиенты
+        - name: skin_type
+          in: query
+          schema:
+            type: string
+            enum: [normal, dry, oily, combination, sensitive]
+          description: Тип кожи.
+      responses:
+        '200':
+          description: Успешный поиск
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductPreview'
+
+  # Детальная информация о продукте
+  /products/{id}:
+    get:
+      summary: Полная информация о продукте
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор продукта
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Детальная информация о продукте
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetails'
+        '404':
+          description: Продукт не найден
+
+  # Похожие продукты по составу
+  /products/{id}/similar:
+    get:
+      summary: Поиск похожих продуктов по составу
+      description: |
+        Подбор похожих продуктов по составу (по умолчанию топ-5).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор продукта
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+          description: Лимит результатов
+      responses:
+        '200':
+          description: Список похожих продуктов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimilarProduct'
+
+  # Поиск продуктов по ингредиентам
+  /ingredients:
+    get:
+      summary: Поиск продуктов по ингредиентам
+      parameters:
+        - name: ingredient_name
+          in: query
+          schema:
+            type: string
+          description: Название ингредиента для поиска продуктов по ингредиентам
+        - name: min_safety
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+          description: Минимальный уровень безопасности
+        - name: max_safety
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+          description: Максимальный уровень безопасности
+      responses:
+        '200':
+          description: Список продуктов, содержащих указанные ингредиенты
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductPreview'
+
+  # Информация о пользователе
+  /auth/me:
+    get:
+      summary: Получение информации о текущем пользователе
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Требуется авторизация
+
+components:
+  schemas:
+    # Модели данных
+    UserRegistration:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        name:
+          type: string
+
+    UserCredentials:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    ProductPreview:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "5f8d3b7a9c1d5a2b3c4d5e6f"
+        name:
+          type: string
+          example: "Увлажняющий крем"
+        brand:
+          type: string
+          example: "La Roche-Posay"
+        category:
+          type: string
+          example: "Уход за лицом"
+        price:
+          type: number
+          format: float
+          example: 1499.99
+        safety_rating:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 8
+        image_url:
+          type: string
+          format: uri
+
+    SimilarProduct:
+      allOf:
+        - $ref: '#/components/schemas/ProductPreview'
+        - type: object
+          properties:
+            common_ingredients:
+              type: integer
+            similarity_score:
+              type: number
+              format: float
+
+    ProductDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProductPreview'
+        - type: object
+          properties:
+            description:
+              type: string
+            ingredients:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProductIngredient'
+            reviews_stats:
+              $ref: '#/components/schemas/ReviewStats'
+            analogues:
+              type: array
+              items:
+                $ref: '#/components/schemas/AnalogueProduct'
+
+    ProductIngredient:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        safety_level:
+          type: integer
+          minimum: 1
+          maximum: 10
+
+    ReviewInput:
+      type: object
+      required:
+        - rating
+        - text
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        text:
+          type: string
+        skin_type:
+          type: string
+          nullable: true
+
+    CompositionAnalysisRequest:
+      type: object
+      required:
+        - ingredients
+      properties:
+        ingredients:
+          type: array
+          items:
+            type: string
+        excluded_ingredients:
+          type: array
+          items:
+            type: string
+
+    CompositionAnalysisResult:
+      type: object
+      properties:
+        safety_score:
+          type: integer
+        flagged_ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlaggedIngredient'
+
+    FlaggedIngredient:
+      type: object
+      properties:
+        name:
+          type: string
+        safety_level:
+          type: integer
+
+    Favorite:
+      type: object
+      properties:
+        product_id:
+          type: string
+        user_id:
+          type: string
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        skin_type:
+          type: string
+        registration_date:
+          type: string
+          format: date-time
+
+  parameters:
+    productId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Идентификатор продукта
+
+    reviewId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Идентификатор отзыва
+
+    ingredient_name:
+      in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Название ингредиента для поиска продуктов по ингредиентам
+
+    name:
+      in: query
+      name: name
+      schema:
+        type: string
+      description: Поиск по названию продукта
+
+    brand:
+      in: query
+      name: brand
+      schema:
+        type: string
+      description: Фильтр по бренду
+
+    category:
+      in: query
+      name: category
+      schema:
+        type: string
+      description: Фильтр по категории
+
+    min_price:
+      in: query
+      name: min_price
+      schema:
+        type: number
+        format: float
+      description: Минимальная цена
+
+    max_price:
+      in: query
+      name: max_price
+      schema:
+        type: number
+        format: float
+      description: Максимальная цена
+
+    min_safety:
+      in: query
+      name: min_safety
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 10
+      description: Минимальный уровень безопасности (1-10)
+
+    max_safety:
+      in: query
+      name: max_safety
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 10
+      description: Максимальный уровень безопасности (1-10)
+
+    include_ingredients:
+      in: query
+      name: include_ingredients
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: false
+      description: Обязательные ингредиенты
+
+    exclude_ingredients:
+      in: query
+      name: exclude_ingredients
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: false
+      description: Исключаемые ингредиенты
+
+    skin_type:
+      in: query
+      name: skin_type
+      schema:
+        type: string
+        enum: [normal, dry, oily, combination, sensitive]
+      description: Тип кожи.
+
+    limit:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        default: 5
+      description: Лимит результатов
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
