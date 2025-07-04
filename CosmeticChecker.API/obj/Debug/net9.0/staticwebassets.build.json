@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "I0JlBC1+DYnoo1jvKIYMZUnhSaHAGm9z1SEvoXUBQyw=",
+  "Source": "CosmeticChecker.API",
+  "BasePath": "_content/CosmeticChecker.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

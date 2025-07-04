@@ -1,0 +1,4 @@
+@CosmeticChecker.API_HostAddress = https://localhost:443
+
+GET {{CosmeticChecker.API_HostAddress}}/api/products/1  // Замените на правильный эндпоинт
+Accept: application/json
